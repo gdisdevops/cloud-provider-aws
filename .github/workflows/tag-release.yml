@@ -4,8 +4,8 @@ on:
     branches:
       - master
       - 'release-*'
-    paths:
-      - version.txt
+    tags:
+      - "v*"
 jobs:
   tag:
     runs-on: ubuntu-latest
