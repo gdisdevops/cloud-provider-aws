@@ -4,10 +4,10 @@ on:
     branches:
       - master
       - 'release-*'
-    paths:
-      - version.txt
+    tags:
+      - "v*"
 jobs:
-  tag:
+  release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -15,60 +15,45 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - run: /usr/bin/git config --global user.email actions@github.com
-      - run: /usr/bin/git config --global user.name 'GitHub Actions Release Tagger'
-      - run: hack/tag-release.sh
-        id: tag_release
-    outputs:
-      release_tag: ${{ steps.tag_release.outputs.release_tag }}
-  release:
-    needs: tag
-    runs-on: ubuntu-latest
-    permissions:
-        contents: write
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
 
-    - name: Setup Golang
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.19.2
+      - name: Setup Golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19.2
 
-    - name: Build Go Binary
-      run: |
-        GOOS=linux GOARCH=amd64 go build -o ecr-credential-provider cmd/ecr-credential-provider/*.go
-    - uses: actions/upload-artifact@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        name: ecr-credential-provider
-        path: ecr-credential-provider
+      - name: Build Go Binary
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o ecr-credential-provider cmd/ecr-credential-provider/*.go
+      - uses: actions/upload-artifact@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          name: ecr-credential-provider
+          path: ecr-credential-provider
 
-    - uses: actions/create-release@v1
-      id: create_release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ needs.tag.outputs.release_tag }}
-        release_name: ${{ needs.tag.outputs.release_tag }}
-        body: |
-          AWS Cloud Provider
-          
-          The cloud provider now runs out-of-tree in a new component called aws-cloud-controller-manager.
-          The external provider preserves all existing behavior/functionality from the legacy in-tree provider.
-          
-          ## CHANGELOG
-          See [CHANGELOG](https://github.com/kubernetes/cloud-provider-aws/blob/master/docs/CHANGELOG.md) for full list of changes.
-        draft: false
-        prerelease: false
+      - uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: ${{ github.ref_name }}
+          body: |
+            AWS Cloud Provider
+            
+            The cloud provider now runs out-of-tree in a new component called aws-cloud-controller-manager.
+            The external provider preserves all existing behavior/functionality from the legacy in-tree provider.
+            
+            ## CHANGELOG
+            See [CHANGELOG](https://github.com/kubernetes/cloud-provider-aws/blob/master/docs/CHANGELOG.md) for full list of changes.
+          draft: false
+          prerelease: false
 
-    - uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./ecr-credential-provider
-        asset_name: ecr-credential-provider
-        asset_content_type: application/octet-stream
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./ecr-credential-provider
+          asset_name: ecr-credential-provider
+          asset_content_type: application/octet-stream
